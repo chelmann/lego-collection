@@ -1,0 +1,152 @@
+---
+title: "2021 Year End LEGO Wrap Up"
+subtitle: "prepared for Ethan Helmann"
+date: | 
+  ![](images/lego-image.png){width=35%}
+
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 4
+
+header-includes:
+  - \usepackage{titling}
+  - \setlength{\droptitle}{20em} 
+  
+include-before:
+- '`\newpage{}`{=latex}'
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(XML)
+library(RColorBrewer)
+library(wordcloud2)
+library(webshot)
+library(htmlwidgets)
+
+summary.yr <- 2022
+summary.owner <- "Ethan"
+
+# Data Files
+sets <- readxl::read_xlsx("data//helmann-family-lego-collection.xlsx",sheet="sets") %>% filter(owner==summary.owner)
+figures <- readxl::read_xlsx("data//helmann-family-lego-collection.xlsx",sheet="figures") %>% filter(owner==summary.owner)
+parts <- readxl::read_xlsx("data//helmann-family-lego-collection.xlsx",sheet="parts") %>% filter(owner==summary.owner)
+
+# High Level Stats
+num.sets <- sets %>% select(set_num) %>% unique() %>% pull() %>% length()
+num.pieces <- sets %>% select(Pieces) %>% pull() %>% sum()
+num.figures <- sets %>% select(Figures) %>% pull() %>% sum()
+num.main.themes <- sets %>% select(main_theme) %>% unique() %>% pull() %>% length()
+num.total.themes <- sets %>% select(theme_name) %>% unique() %>% pull() %>% length()
+num.colors <- parts %>% select(color_id) %>% unique() %>% pull() %>% length()
+num.unique.parts <- parts %>% select(part_num) %>% unique() %>% pull() %>% length()
+
+first.yr <- sets %>% select(release_year) %>% pull() %>% min()
+oldest.set <- sets %>% filter(release_year==first.yr)%>% select(set_name) %>% unique() %>% pull()
+
+last.yr <- sets %>% select(release_year) %>% pull() %>% max()
+newest.set <- sets %>% filter(release_year==last.yr)%>% select(set_name) %>% unique() %>% pull()
+
+# Themes
+temp <- sets %>% select(set_name, main_theme) %>% unique() %>% mutate(count=1) %>% group_by(main_theme) %>% summarise(count=sum(count))
+themes.image <- wordcloud2(temp, size=0.75, shape='circle', shuffle=FALSE)
+saveWidget(themes.image, "tmp.html", selfcontained = F)
+webshot("tmp.html", "wc1.png", cliprect = "viewport", delay = 5)
+
+themes.more.than.ten <- temp %>% filter(count>10) %>% select(main_theme) %>% pull() %>% length()
+max.theme.count <- temp %>% select(count) %>% pull() %>% max()
+max.theme.sets <- temp %>% filter(count==max.theme.count) %>% select(main_theme) %>% pull()
+themes.equal.one <- temp %>% filter(count==1) %>% select(main_theme) %>% pull() %>% length()
+
+# Sets by Year of Release
+temp <- sets %>% select(set_num,release_year) %>% unique() %>% mutate(count=1) %>% group_by(release_year) %>% summarise(count=sum(count))
+sets.by.year.plot <- ggplot(temp, aes(x=release_year, y=count, fill=release_year)) + 
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_continuous(n.break=10)+
+  geom_text(aes(label=count), vjust=-0.3, size=3.5)+
+  theme(legend.position = "none",
+          axis.title.y=element_blank(), 
+          axis.title.x=element_blank(),
+          axis.text.y=element_blank(),
+          axis.text.x=element_text(size=10),
+          axis.title=element_text(size=12,face="bold"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          axis.line = element_blank())
+
+# Pieces by Year of Release
+temp <- sets %>% select(set_num,release_year,Pieces) %>% unique() %>% group_by(release_year) %>% summarise(count=sum(Pieces))
+parts.by.year.plot <- ggplot(temp, aes(x=release_year, y=count, fill=release_year)) + 
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_continuous(n.break=10)+
+  geom_text(aes(label=count), vjust=-0.3, size=3.5)+
+  theme(legend.position = "none",
+          axis.title.y=element_blank(), 
+          axis.title.x=element_blank(),
+          axis.text.y=element_blank(),
+          axis.text.x=element_text(size=10),
+          axis.title=element_text(size=12,face="bold"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          axis.line = element_blank())
+
+unique.parts <- parts %>% select(part_num, quantity) %>% group_by(part_num) %>% summarise(count=sum(quantity))
+
+
+```
+\newpage
+
+# Year End Review
+This is a summary of your Lego collection as of January `r summary.yr`. As of January `r summary.yr`, your Lego collection consisted of:  
+
+* `r format(num.sets, nsmall=0, big.mark=",")` total sets
+* `r format(num.pieces, nsmall=0, big.mark=",")` total pieces
+* `r format(num.main.themes, , nsmall=0, big.mark=",")` different themes
+* `r format(num.colors, , nsmall=0, big.mark=",")` unique colors
+* `r format(num.unique.parts, , nsmall=0, big.mark=",")` unique pieces
+
+# Themes
+Of the **`r num.main.themes`** total themes in your collection, you have **`r themes.more.than.ten`** themes in which you have 10 or more different sets. As of `r summary.yr`, the theme with the highest number of sets in your collection was **`r max.theme.sets`**, where you had a total of **`r max.theme.count`** different sets. At the bottom end, you had **`r themes.equal.one`** themes with only 1 set. The WordCloud below contains the name of all of your sets where the largest font sizes represent the themes in which you have the greatest number of sets. 
+
+```{r themes-charts, echo=FALSE, out.width = "100%", fig.align = "center", fig.cap = "Wordcloud of Lego Themes in my Collection"}
+knitr::include_graphics("wc1.png")
+```
+
+\newpage
+# Years
+You have a vast expanse of years in your collection. Your oldest set is the **`r oldest.set`** which you inherited from your Mom. This set was originally released in **`r first.yr`**. The most recent set added to your collection is **`r newest.set`** which was released in **`r last.yr`**. In all, your collection spans **`r last.yr-first.yr` years**!
+
+## Number of Sets by Year of Release
+```{r sets-by-year-charts, echo=FALSE, fig.cap = "Number of Sets by Release Date of Set"}
+sets.by.year.plot  
+```
+   
+
+## Number of Pieces by Set Year of Release
+```{r pieces-by-year-charts, echo=FALSE}
+parts.by.year.plot  
+```
+
+\newpage
+## Unique Pieces
+Lego Part #3023: ![]("images\\parts\\3023.png"){width=10%}  
+**`r parts %>% filter(part_num=="3023") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="3023") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="3023") %>% select(color_name) %>% unique() %>% pull()`  
+  
+Lego Part #6141: ![]("images\\parts\\6141.png"){width=10%}  
+**`r parts %>% filter(part_num=="6141") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="6141") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="6141") %>% select(color_name) %>% unique() %>% pull()`  
+  
+Lego Part #3024: ![]("images\\parts\\3024.png"){width=10%}  
+**`r parts %>% filter(part_num=="3024") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="3024") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="3024") %>% select(color_name) %>% unique() %>% pull()`  
+  
+Lego Part #11211: ![]("images\\parts\\11211.png"){width=10%}  
+**`r parts %>% filter(part_num=="11211") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="11211") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="11211") %>% select(color_name) %>% unique() %>% pull()`  
+  
+Lego Part #10113: ![]("images\\parts\\10113.png"){width=10%}  
+**`r parts %>% filter(part_num=="10113") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="10113") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="10113") %>% select(color_name) %>% unique() %>% pull()`
+
