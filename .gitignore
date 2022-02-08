@@ -49,3 +49,4 @@ vignettes/*.pdf
 /tmp_files/
 /images/
 *.Rproj
+*.pdf
