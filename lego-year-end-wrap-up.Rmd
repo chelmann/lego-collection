@@ -56,12 +56,17 @@ newest.set <- sets %>% filter(release_year==last.yr)%>% select(set_name) %>% uni
 # Sets
 temp <- sets %>% 
   select(set_name, main_theme, theme_name, Figures, Pieces, release_year) %>%
-  rename(`Set Name`=set_name, `Parent Theme`=main_theme, `Theme`=theme_name, `Release Year`=release_year) %>%
+  rename(`Set Name`=set_name, `Parent Theme`=main_theme, `Theme`=theme_name, `Release Year`=release_year, `Mini Figures`=Figures) %>%
   arrange(`Release Year`) %>%
   mutate(`#` = row_number()) %>%
-  select(`#`, `Set Name`, `Parent Theme`, `Theme`, Figures, Pieces, `Release Year`)
+  select(`#`, `Set Name`, `Parent Theme`, `Theme`, `Mini Figures`, Pieces, `Release Year`)
 
 sets.table.final <- kable(temp, caption = "Lego Sets", align="clllccc")
+
+num.sets.last.five <- sets %>% select(release_year) %>% filter(release_year >= last.yr-5) %>% pull() %>% length()
+sets.per.yr <- sets %>% select(release_year) %>% mutate(Totals=1) %>% group_by(release_year) %>% summarise(Totals=sum(Totals))
+max.sets.per.yr <- sets.per.yr %>% select(Totals) %>% pull() %>% max() 
+max.sets.yr <- sets.per.yr %>% filter(Totals==max.sets.per.yr) %>% select(release_year) %>% pull()
 
 # Themes
 temp <- sets %>% select(set_name, main_theme) %>% unique() %>% mutate(count=1) %>% group_by(main_theme) %>% summarise(count=sum(count))
@@ -159,6 +164,13 @@ This is a summary of your Lego collection as of January `r summary.yr`. At the s
 This year-end summary was created using RMarkdown - a package in the R library that allows for a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>. The database of Lego pieces and images are courtesy of the Rebrickable website, a great resource for Lego data. For more information on Rebrickable, see <https://rebrickable.com/downloads>
 
 # Sets
+You have a vast expanse of years in your collection. Your oldest set is the **`r oldest.set`** which you inherited from your Mom. This set was originally released in **`r first.yr`**. The most recent set added to your collection is **`r newest.set`** which was released in **`r last.yr`**. In all, your collection spans **`r last.yr-first.yr` years**!  
+
+`r max.sets.yr` is the year that you have the most sets from in your collection - `r max.sets.per.yr` in all. This accounts for approximately `r round((max.sets.per.yr/num.sets)*100,0)`% of your entire Lego collection from this one year. Since `r last.yr-5` you have added `r num.sets.last.five` sets to your collection, an average of `r num.sets.last.five/5` sets per year.  
+
+```{r sets-by-year-charts, echo=FALSE, fig.cap = "Number of Sets by Release Year"}
+sets.by.year.plot  
+```
 
 \newpage
 \blandscape
@@ -175,13 +187,6 @@ knitr::include_graphics("wc1.png")
 ```
 
 \newpage
-# Years
-You have a vast expanse of years in your collection. Your oldest set is the **`r oldest.set`** which you inherited from your Mom. This set was originally released in **`r first.yr`**. The most recent set added to your collection is **`r newest.set`** which was released in **`r last.yr`**. In all, your collection spans **`r last.yr-first.yr` years**!
-
-## Number of Sets by Year of Release
-```{r sets-by-year-charts, echo=FALSE, fig.cap = "Number of Sets by Release Date of Set"}
-sets.by.year.plot  
-```
    
 
 ## Number of Pieces by Year of Release
