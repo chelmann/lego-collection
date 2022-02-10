@@ -12,6 +12,9 @@ output:
 header-includes:
   - \usepackage{titling}
   - \setlength{\droptitle}{20em} 
+  - \usepackage{pdflscape}
+  - \newcommand{\blandscape}{\begin{landscape}}
+  - \newcommand{\elandscape}{\end{landscape}}
   
 include-before:
 - '`\newpage{}`{=latex}'
@@ -20,11 +23,12 @@ include-before:
 ```{r setup, include=FALSE}
 
 library(tidyverse)
-library(XML)
+library(knitr)
 library(RColorBrewer)
 library(wordcloud2)
 library(webshot)
 library(htmlwidgets)
+#library(kableExtra)
 
 summary.yr <- 2022
 summary.owner <- "Ethan"
@@ -49,11 +53,21 @@ oldest.set <- sets %>% filter(release_year==first.yr)%>% select(set_name) %>% un
 last.yr <- sets %>% select(release_year) %>% pull() %>% max()
 newest.set <- sets %>% filter(release_year==last.yr)%>% select(set_name) %>% unique() %>% pull()
 
+# Sets
+temp <- sets %>% 
+  select(set_name, main_theme, theme_name, Figures, Pieces, release_year) %>%
+  rename(`Set Name`=set_name, `Parent Theme`=main_theme, `Theme`=theme_name, `Release Year`=release_year) %>%
+  arrange(`Release Year`) %>%
+  mutate(`#` = row_number()) %>%
+  select(`#`, `Set Name`, `Parent Theme`, `Theme`, Figures, Pieces, `Release Year`)
+
+sets.table.final <- kable(temp, caption = "Lego Sets", align="clllccc")
+
 # Themes
 temp <- sets %>% select(set_name, main_theme) %>% unique() %>% mutate(count=1) %>% group_by(main_theme) %>% summarise(count=sum(count))
 themes.image <- wordcloud2(temp, size=0.75, shape='circle', shuffle=FALSE)
 saveWidget(themes.image, "tmp.html", selfcontained = F)
-webshot("tmp.html", "wc1.png", cliprect = "viewport", delay = 5)
+webshot("tmp.html", "wc1.png", cliprect = c(200, 100, 800, 400), delay = 5)
 
 themes.more.than.ten <- temp %>% filter(count>10) %>% select(main_theme) %>% pull() %>% length()
 max.theme.count <- temp %>% select(count) %>% pull() %>% max()
@@ -96,20 +110,62 @@ parts.by.year.plot <- ggplot(temp, aes(x=release_year, y=count, fill=release_yea
           panel.border = element_blank(),
           axis.line = element_blank())
 
-unique.parts <- parts %>% select(part_num, quantity) %>% group_by(part_num) %>% summarise(count=sum(quantity))
+unique.parts.by.number <- parts %>% 
+  select(part_num, part_name, quantity) %>% 
+  group_by(part_num, part_name) %>% 
+  summarise(`Number of Pieces`=sum(quantity))
 
+unique.parts.by.color <- parts %>% 
+  select(part_num, color_id) %>% 
+  mutate(count=1) %>% 
+  group_by(part_num, color_id) %>% 
+  summarise(Total=sum(count)) %>%
+  mutate(`Number of Colors` = 1) %>% 
+  group_by(part_num) %>% 
+  summarise(`Number of Colors` = sum(`Number of Colors`))
+
+parts.table <- left_join(unique.parts.by.number, unique.parts.by.color, by="part_num") %>% 
+  rename(`Part Number`=part_num, `Part Name`=part_name) 
+  
+parts.table <- as_tibble(parts.table) %>% 
+  arrange(desc(`Number of Pieces`)) %>% 
+  mutate(`#` = row_number()) %>%
+  select(`#`,`Part Number`, `Part Name`, `Number of Pieces`, `Number of Colors`)
+
+parts.table$file <- paste0('images//parts//',parts.table$`Part Number`, '.png')
+parts.table$Image <- paste0(sprintf('![](%s)', parts.table$file),"{width=5%}")
+
+temp <- parts.table %>% 
+  select(-file) %>%
+  slice(1:125)
+  
+parts.table.final <- kable(temp, caption = "Unique Lego Parts", align="cclccc")
 
 ```
+\listoftables
+\listoffigures
 \newpage
 
-# Year End Review
-This is a summary of your Lego collection as of January `r summary.yr`. As of January `r summary.yr`, your Lego collection consisted of:  
+# Introduction
+This is a summary of your Lego collection as of January `r summary.yr`. At the start of `r summary.yr`, your Lego collection consisted of:  
 
 * `r format(num.sets, nsmall=0, big.mark=",")` total sets
 * `r format(num.pieces, nsmall=0, big.mark=",")` total pieces
+* `r format(num.figures, nsmall=0, big.mark=",")` total Mini-Figures
 * `r format(num.main.themes, , nsmall=0, big.mark=",")` different themes
 * `r format(num.colors, , nsmall=0, big.mark=",")` unique colors
-* `r format(num.unique.parts, , nsmall=0, big.mark=",")` unique pieces
+* `r format(num.unique.parts, , nsmall=0, big.mark=",")` unique pieces  
+  
+This year-end summary was created using RMarkdown - a package in the R library that allows for a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>. The database of Lego pieces and images are courtesy of the Rebrickable website, a great resource for Lego data. For more information on Rebrickable, see <https://rebrickable.com/downloads>
+
+# Sets
+
+\newpage
+\blandscape
+```{r unique-sets-table, echo=FALSE}
+sets.table.final
+```
+\elandscape
 
 # Themes
 Of the **`r num.main.themes`** total themes in your collection, you have **`r themes.more.than.ten`** themes in which you have 10 or more different sets. As of `r summary.yr`, the theme with the highest number of sets in your collection was **`r max.theme.sets`**, where you had a total of **`r max.theme.count`** different sets. At the bottom end, you had **`r themes.equal.one`** themes with only 1 set. The WordCloud below contains the name of all of your sets where the largest font sizes represent the themes in which you have the greatest number of sets. 
@@ -128,25 +184,17 @@ sets.by.year.plot
 ```
    
 
-## Number of Pieces by Set Year of Release
+## Number of Pieces by Year of Release
 ```{r pieces-by-year-charts, echo=FALSE}
 parts.by.year.plot  
 ```
 
 \newpage
+\blandscape
 ## Unique Pieces
-Lego Part #3023: ![]("images\\parts\\3023.png"){width=10%}  
-**`r parts %>% filter(part_num=="3023") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="3023") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="3023") %>% select(color_name) %>% unique() %>% pull()`  
-  
-Lego Part #6141: ![]("images\\parts\\6141.png"){width=10%}  
-**`r parts %>% filter(part_num=="6141") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="6141") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="6141") %>% select(color_name) %>% unique() %>% pull()`  
-  
-Lego Part #3024: ![]("images\\parts\\3024.png"){width=10%}  
-**`r parts %>% filter(part_num=="3024") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="3024") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="3024") %>% select(color_name) %>% unique() %>% pull()`  
-  
-Lego Part #11211: ![]("images\\parts\\11211.png"){width=10%}  
-**`r parts %>% filter(part_num=="11211") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="11211") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="11211") %>% select(color_name) %>% unique() %>% pull()`  
-  
-Lego Part #10113: ![]("images\\parts\\10113.png"){width=10%}  
-**`r parts %>% filter(part_num=="10113") %>% select(quantity) %>% pull() %>% sum()`** pieces in the following **`r parts %>% filter(part_num=="10113") %>% select(color_name) %>% unique() %>% pull() %>% length()`** colors: `r parts %>% filter(part_num=="10113") %>% select(color_name) %>% unique() %>% pull()`
 
+```{r unique-pieces-table, echo=FALSE}
+parts.table.final
+```
+
+\elandscape

@@ -50,3 +50,5 @@ vignettes/*.pdf
 /images/
 *.Rproj
 *.pdf
+*.aux
+*.out
