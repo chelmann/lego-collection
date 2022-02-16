@@ -1,5 +1,5 @@
 ---
-title: "2021 Year End LEGO Wrap Up"
+title: "LEGO Collection Report"
 subtitle: "prepared for Ethan Helmann"
 date: | 
   ![](images/lego-image.png){width=35%}
@@ -23,15 +23,20 @@ include-before:
 ```{r setup, include=FALSE}
 
 library(tidyverse)
+library(scales)
 library(knitr)
 library(RColorBrewer)
 library(wordcloud2)
 library(webshot)
 library(htmlwidgets)
-#library(kableExtra)
 
-summary.yr <- 2022
 summary.owner <- "Ethan"
+unique.parts.to.list <- 150
+
+report.date <- Sys.Date()
+current.month <- format(report.date, format="%B")
+current.year <- format(report.date, format="%Y")
+current.day <- format(report.date, format="%d")
 
 # Data Files
 sets <- readxl::read_xlsx("data//helmann-family-lego-collection.xlsx",sheet="sets") %>% filter(owner==summary.owner)
@@ -63,10 +68,32 @@ temp <- sets %>%
 
 sets.table.final <- kable(temp, caption = "Lego Sets", align="clllccc")
 
-num.sets.last.five <- sets %>% select(release_year) %>% filter(release_year >= last.yr-5) %>% pull() %>% length()
+num.sets.last.seven <- sets %>% select(release_year) %>% filter(release_year >= last.yr-7) %>% pull() %>% length()
 sets.per.yr <- sets %>% select(release_year) %>% mutate(Totals=1) %>% group_by(release_year) %>% summarise(Totals=sum(Totals))
 max.sets.per.yr <- sets.per.yr %>% select(Totals) %>% pull() %>% max() 
 max.sets.yr <- sets.per.yr %>% filter(Totals==max.sets.per.yr) %>% select(release_year) %>% pull()
+
+temp <- sets %>% 
+  select(set_num,release_year) %>% 
+  unique() %>% 
+  mutate(count=1) %>% 
+  group_by(release_year) %>% 
+  summarise(count=sum(count)) %>% 
+  mutate(year=as.character(release_year))
+
+sets.by.year.plot <- ggplot(temp, aes(x=year, y=count, fill=year)) + 
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = label_comma(accuracy = 1)) +
+  geom_text(aes(label=count), vjust=-0.3, size=3.5)+
+  theme(legend.position = "none",
+          axis.title.y=element_blank(), 
+          axis.title.x=element_blank(),
+          axis.text.y=element_text(size=10),
+          axis.text.x=element_text(size=10),
+          panel.background = element_blank(),
+          panel.grid.minor=element_blank(),
+          panel.grid.major=element_blank(),
+          axis.line = element_line(size = 0.25, colour = "#BBBDC0", linetype=1),)
 
 # Themes
 temp <- sets %>% select(set_name, main_theme) %>% unique() %>% mutate(count=1) %>% group_by(main_theme) %>% summarise(count=sum(count))
@@ -78,24 +105,6 @@ themes.more.than.ten <- temp %>% filter(count>10) %>% select(main_theme) %>% pul
 max.theme.count <- temp %>% select(count) %>% pull() %>% max()
 max.theme.sets <- temp %>% filter(count==max.theme.count) %>% select(main_theme) %>% pull()
 themes.equal.one <- temp %>% filter(count==1) %>% select(main_theme) %>% pull() %>% length()
-
-# Sets by Year of Release
-temp <- sets %>% select(set_num,release_year) %>% unique() %>% mutate(count=1) %>% group_by(release_year) %>% summarise(count=sum(count))
-sets.by.year.plot <- ggplot(temp, aes(x=release_year, y=count, fill=release_year)) + 
-  geom_bar(stat = "identity") +
-  scale_y_continuous(labels = scales::comma) +
-  scale_x_continuous(n.break=10)+
-  geom_text(aes(label=count), vjust=-0.3, size=3.5)+
-  theme(legend.position = "none",
-          axis.title.y=element_blank(), 
-          axis.title.x=element_blank(),
-          axis.text.y=element_blank(),
-          axis.text.x=element_text(size=10),
-          axis.title=element_text(size=12,face="bold"),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.border = element_blank(),
-          axis.line = element_blank())
 
 # Pieces by Year of Release
 temp <- sets %>% select(set_num,release_year,Pieces) %>% unique() %>% group_by(release_year) %>% summarise(count=sum(Pieces))
@@ -142,7 +151,7 @@ parts.table$Image <- paste0(sprintf('![](%s)', parts.table$file),"{width=5%}")
 
 temp <- parts.table %>% 
   select(-file) %>%
-  slice(1:125)
+  slice(1:unique.parts.to.list)
   
 parts.table.final <- kable(temp, caption = "Unique Lego Parts", align="cclccc")
 
@@ -152,7 +161,7 @@ parts.table.final <- kable(temp, caption = "Unique Lego Parts", align="cclccc")
 \newpage
 
 # Introduction
-This is a summary of your Lego collection as of January `r summary.yr`. At the start of `r summary.yr`, your Lego collection consisted of:  
+This is a summary of your Lego collection as of `r current.month` `r current.day`, `r current.year`. Currently, your Lego collection consists of:  
 
 * `r format(num.sets, nsmall=0, big.mark=",")` total sets
 * `r format(num.pieces, nsmall=0, big.mark=",")` total pieces
@@ -161,12 +170,22 @@ This is a summary of your Lego collection as of January `r summary.yr`. At the s
 * `r format(num.colors, , nsmall=0, big.mark=",")` unique colors
 * `r format(num.unique.parts, , nsmall=0, big.mark=",")` unique pieces  
   
-This year-end summary was created using RMarkdown - a package in the R library that allows for a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>. The database of Lego pieces and images are courtesy of the Rebrickable website, a great resource for Lego data. For more information on Rebrickable, see <https://rebrickable.com/downloads>
+This summary was created using RMarkdown - a package in the R library that allows for a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>. The database of Lego pieces and images are courtesy of the Rebrickable website, a great resource for Lego data. For more information on Rebrickable, see <https://rebrickable.com/downloads>
+  
+# Themes
+Of the `r num.main.themes` total themes in your collection, you have `r themes.more.than.ten` themes in which you have 10 or more different sets. As of `r current.year`, the theme with the highest number of sets in your collection was `r max.theme.sets`, where you had a total of `r max.theme.count` different sets. At the bottom end, you had `r themes.equal.one` themes with only 1 set. The WordCloud below contains the name of all of your sets where the largest font sizes represent the themes in which you have the greatest number of sets. 
 
+```{r themes-charts, echo=FALSE, out.width = "100%", fig.align = "center", fig.cap = "Wordcloud of Lego Themes in my Collection"}
+knitr::include_graphics("wc1.png")
+```
+
+\newpage
 # Sets
-You have a vast expanse of years in your collection. Your oldest set is the **`r oldest.set`** which you inherited from your Mom. This set was originally released in **`r first.yr`**. The most recent set added to your collection is **`r newest.set`** which was released in **`r last.yr`**. In all, your collection spans **`r last.yr-first.yr` years**!  
+You have a vast expanse of years in your collection. Your oldest set is the `r oldest.set` which you inherited from your Mom. This set was originally released in `r first.yr`. The most recent sets added to your collection are `r newest.set` which were all released in `r last.yr`. In all, your collection spans **`r last.yr-first.yr` years**!  
 
-`r max.sets.yr` is the year that you have the most sets from in your collection - `r max.sets.per.yr` in all. This accounts for approximately `r round((max.sets.per.yr/num.sets)*100,0)`% of your entire Lego collection from this one year. Since `r last.yr-5` you have added `r num.sets.last.five` sets to your collection, an average of `r num.sets.last.five/5` sets per year.  
+`r max.sets.yr` is the year that you have the most sets from in your collection - `r max.sets.per.yr` in all. This accounts for approximately `r round((max.sets.per.yr/num.sets)*100,0)`% of your entire Lego collection from this one year. Since `r last.yr-7` you have added `r num.sets.last.seven` sets to your collection, an average of `r round(num.sets.last.seven/7,1)` sets per year.  
+  
+  
 
 ```{r sets-by-year-charts, echo=FALSE, fig.cap = "Number of Sets by Release Year"}
 sets.by.year.plot  
@@ -179,12 +198,6 @@ sets.table.final
 ```
 \elandscape
 
-# Themes
-Of the **`r num.main.themes`** total themes in your collection, you have **`r themes.more.than.ten`** themes in which you have 10 or more different sets. As of `r summary.yr`, the theme with the highest number of sets in your collection was **`r max.theme.sets`**, where you had a total of **`r max.theme.count`** different sets. At the bottom end, you had **`r themes.equal.one`** themes with only 1 set. The WordCloud below contains the name of all of your sets where the largest font sizes represent the themes in which you have the greatest number of sets. 
-
-```{r themes-charts, echo=FALSE, out.width = "100%", fig.align = "center", fig.cap = "Wordcloud of Lego Themes in my Collection"}
-knitr::include_graphics("wc1.png")
-```
 
 \newpage
    
